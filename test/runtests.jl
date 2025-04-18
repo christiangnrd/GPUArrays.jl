@@ -3,6 +3,9 @@ using Dates
 import REPL
 using Printf: @sprintf
 
+using Pkg
+Pkg.add(url="https://github.com/JuliaGPU/KernelAbstractions.jl", rev="main")
+
 # parse some command-line arguments
 function extract_flag!(args, flag, default=nothing)
     for f in args

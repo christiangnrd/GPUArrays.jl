@@ -364,12 +364,15 @@ function generic_matmatmul!(C::AbstractGPUMatrix{R}, A::AbstractGPUMatrix{T}, B:
         @inbounds outval[1] = -zero(R)
 
         # number of tiles depends on inner dimension
-        @uniform NUM_TILES = div(Q + TILE_DIM - 1, TILE_DIM)
+        @uniform NUM_TILES = cld(Q, TILE_DIM)
+
+        I = (grow - 1) * TILE_DIM + tile_row
+        J = (gcol - 1) * TILE_DIM + tile_col
 
         # loop over all tiles needed for this calculation
         for t in 0:(NUM_TILES - 1)
-            I = (grow - 1) * TILE_DIM + tile_row
-            J = (gcol - 1) * TILE_DIM + tile_col
+            # I = (grow - 1) * TILE_DIM + tile_row
+            # J = (gcol - 1) * TILE_DIM + tile_col
 
             # load inputs into tiles, with bounds checking for non-square matrices
             if I <= N && t * TILE_DIM + tile_col <= Q
@@ -386,8 +389,8 @@ function generic_matmatmul!(C::AbstractGPUMatrix{R}, A::AbstractGPUMatrix{T}, B:
             # wait for all tiles to be loaded
             @synchronize
 
-            I = (grow - 1) * TILE_DIM + tile_row
-            J = (gcol - 1) * TILE_DIM + tile_col
+            # I = (grow - 1) * TILE_DIM + tile_row
+            # J = (gcol - 1) * TILE_DIM + tile_col
 
             # calculate value of spot in output, use temporary value to allow for vectorization
             out = zero(R)
@@ -399,8 +402,8 @@ function generic_matmatmul!(C::AbstractGPUMatrix{R}, A::AbstractGPUMatrix{T}, B:
             @synchronize
         end
 
-        I = (grow - 1) * TILE_DIM + tile_row
-        J = (gcol - 1) * TILE_DIM + tile_col
+        # I = (grow - 1) * TILE_DIM + tile_row
+        # J = (gcol - 1) * TILE_DIM + tile_col
 
         # save if inbounds
         if I <= N && J <= M
@@ -408,7 +411,8 @@ function generic_matmatmul!(C::AbstractGPUMatrix{R}, A::AbstractGPUMatrix{T}, B:
         end
     end
 
-    coalesced_matmul_kernel!(get_backend(C), (MAX_TILE_DIM, MAX_TILE_DIM))(C, A, B, N, Q, M;ndrange=map(x -> ceil(Int,x/MAX_TILE_DIM)*MAX_TILE_DIM, size(C)))
+    # coalesced_matmul_kernel!(get_backend(C), (MAX_TILE_DIM, MAX_TILE_DIM))(C, A, B, N, Q, M;ndrange=map(x -> ceil(Int,x/MAX_TILE_DIM)*MAX_TILE_DIM, size(C)))
+    coalesced_matmul_kernel!(get_backend(C), (MAX_TILE_DIM, MAX_TILE_DIM))(C, A, B, N, Q, M;ndrange=size(C))
     C
 end
 function generic_matmatmul!(C::AbstractArray{R}, A::AbstractArray{T}, B::AbstractArray{S}, add::MulAddMul) where {T,S,R}
