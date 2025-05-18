@@ -28,8 +28,14 @@ neutral_element(::typeof(Base._extrema_rf), ::Type{<:NTuple{2,T}}) where {T} = t
 # resolve ambiguities
 Base.mapreduce(f, op, A::AnyGPUArray, As::AbstractArrayOrBroadcasted...;
                dims=:, init=nothing) = _mapreduce(f, op, A, As...; dims=dims, init=init)
+            #    dims=:, init=nothing) = AK._mapreduce(f, op, A, As...; dims=dims, init=init)
 Base.mapreduce(f, op, A::Broadcast.Broadcasted{<:AbstractGPUArrayStyle}, As::AbstractArrayOrBroadcasted...;
                dims=:, init=nothing) = _mapreduce(f, op, A, As...; dims=dims, init=init)
+            #    dims=:, init=nothing) = AK.mapreduce(f, op, #_mapreduce(f, op, A, As...; dims=dims, init=init)
+Base.mapreduce(f, op, A::AnyGPUArray;
+            dims=:, init=nothing) = AK.mapreduce(f, op, A; init, dims=dims isa Colon ? nothing : dims)
+Base.mapreduce(f, op, A::Broadcast.Broadcasted{<:AbstractGPUArrayStyle};
+            dims=:, init=nothing) = AK.mapreduce(f, op, A; init, dims=dims isa Colon ? nothing : dims)
 
 function _mapreduce(f::F, op::OP, As::Vararg{Any,N}; dims::D, init) where {F,OP,N,D}
     # figure out the destination container type by looking at the initializer element,
@@ -85,14 +91,14 @@ function _mapreduce(f::F, op::OP, As::Vararg{Any,N}; dims::D, init) where {F,OP,
     end
 end
 
-Base.any(A::AnyGPUArray{Bool}) = mapreduce(identity, |, A)
-Base.all(A::AnyGPUArray{Bool}) = mapreduce(identity, &, A)
+Base.any(A::AnyGPUArray{Bool}) = AK.any(identity, A)
+Base.all(A::AnyGPUArray{Bool}) = AK.all(identity, A)
 
-Base.any(f::Function, A::AnyGPUArray) = mapreduce(f, |, A)
-Base.all(f::Function, A::AnyGPUArray) = mapreduce(f, &, A)
+Base.any(f::Function, A::AnyGPUArray) = AK.any(f, A)
+Base.all(f::Function, A::AnyGPUArray) = AK.all(f, A)
 
 Base.count(pred::Function, A::AnyGPUArray; dims=:, init=0) =
-    mapreduce(pred, Base.add_sum, A; init=init, dims=dims)
+    AK.count(pred, A; init, dims=dims isa Colon ? nothing : dims)# mapreduce(pred, Base.add_sum, A; init=init, dims=dims)
 
 # avoid calling into `initarray!`
 for (fname, op) in [(:sum, :(Base.add_sum)), (:prod, :(Base.mul_prod)),
