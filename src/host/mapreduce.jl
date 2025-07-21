@@ -69,7 +69,7 @@ function _mapreduce(f::F, op::OP, As::Vararg{Any,N}; dims::D, init) where {F,OP,
     block_size = 256 # Hard-code AK default to prevent mismatches
     sz = size(A)
     red = ntuple(i->(dims==Colon() || i in dims) ? 1 : sz[i], length(sz))
-    R = if !(A isa Broadcast.Broadcasted) && dims isa Colon
+    R = if dims isa Colon
         num_per_block = 2 * block_size
         blocks = (prod(sz) + num_per_block - 1) ÷ num_per_block
         similar(A, ET, 2 * blocks)
@@ -78,8 +78,8 @@ function _mapreduce(f::F, op::OP, As::Vararg{Any,N}; dims::D, init) where {F,OP,
     end
 
     # Use AcceleratedKernels if possible
-    if !(A isa Broadcast.Broadcasted) && (dims isa Colon || dims isa Integer)
-        return AK.mapreduce(f, op, A, get_backend(R);
+    if dims isa Colon || dims isa Integer
+        return AK.mapreduce(f, op, Base.materialize(A), get_backend(R);
                             block_size, init,
                             neutral=init,
                             dims=dims isa Colon ? nothing : dims,
