@@ -46,7 +46,7 @@ function _mapreduce(f::F, op::OP, As::Vararg{Any,N}; dims::D, init) where {F,OP,
         (ET === Union{} || ET === Any) &&
             error("mapreduce cannot figure the output element type, please pass an explicit init value")
 
-        init = neutral_element(op, ET)
+        init = AK.neutral_element(op, ET)
     else
         ET = typeof(init)
     end
@@ -98,7 +98,7 @@ Base.any(f::Function, A::AnyGPUArray) = AK.any(f, A)
 Base.all(f::Function, A::AnyGPUArray) = AK.all(f, A)
 
 Base.count(pred::Function, A::AnyGPUArray; dims=:, init=0) =
-    AK.count(pred, A; init, dims=dims isa Colon ? nothing : dims)# mapreduce(pred, Base.add_sum, A; init=init, dims=dims)
+    AK.count(pred, A; init, dims=dims isa Colon ? nothing : dims)
 
 # avoid calling into `initarray!`
 for (fname, op) in [(:sum, :(Base.add_sum)), (:prod, :(Base.mul_prod)),
@@ -107,7 +107,7 @@ for (fname, op) in [(:sum, :(Base.add_sum)), (:prod, :(Base.mul_prod)),
     fname! = Symbol(fname, '!')
     @eval begin
         Base.$(fname!)(f::Function, r::AnyGPUArray, A::AnyGPUArray{T}) where T =
-            GPUArrays.mapreducedim!(f, $(op), r, A; init=neutral_element($(op), T))
+            GPUArrays.mapreducedim!(f, $(op), r, A; init=AK.neutral_element($(op), T))
     end
 end
 
